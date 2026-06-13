@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Pencarian Hadis - Smart Takhrij{% endblock %}
+
+{% block content %}
+<div class="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
+
+    <!-- Sidebar -->
+    {% include "components/sidebar.html" %}
+
+    <!-- Main Content Area -->
+    <div class="col-span-12 lg:col-span-9 space-y-8">
+        <!-- Hero Section -->
+        <div class="text-center lg:text-left space-y-4 py-4">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight">Eksplorasi Hadis berbasis <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">Digital</span>
+            </h1>
+            <p class="text-lg text-slate-600 max-w-2xl">Temukan hadis, pelajari sanad, dan pahami maknanya dengan
+                bantuan kecerdasan buatan.</p>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="max-w-4xl bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200">
+            <form id="search-form" action="{{ url_for('hadith.search') }}" method="GET" class="space-y-4">
+
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="relative group flex-grow">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                        <input type="text" name="q" value="{{ query or '' }}"
+                            placeholder="Cari terjemahan atau potongan hadis..."
+                            class="w-full pl-12 pr-4 py-3 md:py-4 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 bg-slate-50 text-lg transition-all outline-none">
+                    </div>
+                    <button type="submit"
+                        class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-8 py-3 md:py-4 rounded-xl font-bold hover:shadow-lg hover:shadow-emerald-500/30 transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
+                        <i class="fa-solid fa-search mr-2"></i>Cari
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap gap-4 pt-4 border-t border-slate-100">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Filter
+                            Kitab</label>
+                        <select name="kitab"
+                            class="w-full h-10 p-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 bg-slate-50 text-slate-700 outline-none transition-all font-medium">
+                            <option value="all" {% if not kitab or kitab=='all' %}selected{% endif %}>Semua Kitab
+                            </option>
+                            {% set kitabs_list = ['Sahih al Bukhari', 'Sahih Muslim', 'Sunan Abu Dawud', 'Jami At
+                            Tirmidhi', 'Sunan an Nasai', 'Sunan Ibn Majah', 'Muwatta Malik'] %}
+                            {% for k in kitabs_list %}
+                            <option value="{{ k }}" {% if kitab==k %}selected{% endif %}>{{ k }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Model
+                            Pencarian</label>
+                        <select name="search_type"
+                            class="w-full h-10 p-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 bg-slate-50 text-slate-700 outline-none transition-all font-medium">
+                            <option value="phrase" {% if not search_type or search_type=='phrase' %}selected{% endif %}>
+                                Kata Berurutan</option>
+                            <option value="single" {% if search_type=='single' %}selected{% endif %}>
+                                Kata Tunggal</option>
+                            <option value="random" {% if search_type=='random' %}selected{% endif %}>
+                                Penggalan Kata Acak</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[150px] max-w-[200px]">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Limit
+                            Tampilan</label>
+                        <select name="limit"
+                            class="w-full h-10 p-3 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 bg-slate-50 text-slate-700 outline-none transition-all font-medium">
+                            <option value="10" {% if limit==10 %}selected{% endif %}>10 Hadis</option>
+                            <option value="25" {% if limit==25 %}selected{% endif %}>25 Hadis</option>
+                            <option value="50" {% if limit==50 %}selected{% endif %}>50 Hadis</option>
+                            <option value="100" {% if limit==100 %}selected{% endif %}>100 Hadis</option>
+                        </select>
+                    </div>
+                    {% if bab %}
+                    <input type="hidden" name="bab" value="{{ bab }}">
+                    <div class="flex items-end">
+                        <span
+                            class="inline-flex items-center gap-2 px-4 py-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold border border-emerald-100 text-sm h-[52px]">
+                            <i class="fa-solid fa-filter text-emerald-400"></i> Bab: {{ bab }}
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        <div class="pt-4">
+            {% if hadiths is not none %}
+            <!-- Search Summary -->
+            <div
+                class="mb-6 bg-emerald-50 text-emerald-800 px-6 py-4 rounded-2xl border border-emerald-100 flex items-center gap-3">
+                <i class="fa-solid fa-circle-info text-emerald-500 text-xl"></i>
+                <div>
+                    <span class="font-bold">{{ total_results }}</span> hadis ditemukan
+                    {% if kitab %} {% if kitab == "all" %} dalam seluruh kitab {% else %} dalam kitab <span
+                        class="font-bold">"{{ kitab }}"</span>{% endif %} {% endif %}
+                    {% if bab %} bab <span class="font-bold">"{{ bab }}"</span>{% endif %}
+                    {% if query %} dengan kata kunci <span class="font-bold">"{{ query }}"</span>{% endif %}
+                    (Halaman {{ page }} dari {{ total_pages }}).
+                </div>
+                {% if query or kitab %}
+                <a href="{{ url_for('hadith.index') }}"
+                    class="ml-auto text-sm bg-white text-emerald-600 px-3 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-colors">
+                    Reset Pencarian
+                </a>
+                {% endif %}
+            </div>
+
+            {% if hadiths %}
+            <!-- View Options -->
+            <div class="flex justify-end mb-4">
+                <div class="inline-flex bg-slate-100 rounded-xl p-1 border border-slate-200">
+                    <button onclick="toggleHarakat(true)" id="btn-harakat"
+                        class="px-4 py-1.5 text-sm font-bold rounded-lg bg-white text-emerald-600 shadow-sm transition-all">Harakat</button>
+                    <button onclick="toggleHarakat(false)" id="btn-plain"
+                        class="px-4 py-1.5 text-sm font-medium rounded-lg text-slate-500 hover:text-slate-800 transition-all">Tanpa
+                        Harakat</button>
+                </div>
+            </div>
+
+            <!-- Results Grid -->
+            <div class="grid grid-cols-1 gap-6">
+                {% for hadith in hadiths %}
+                <div class="glass-panel rounded-2xl p-6 transition-transform hover:-translate-y-1 duration-300">
+                    <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+                        <span
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-semibold">
+                            <i class="fa-solid fa-book"></i> {{ hadith.kitab }} No. {{ hadith.nomor }}
+                        </span>
+                        <span class="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Bab: {{
+                            hadith.bab }}</span>
+                    </div>
+
+                    <p class="arabic-text text-3xl text-right leading-loose text-slate-900 mb-6 mt-4 js-arab-text"
+                        dir="rtl">
+                        {{ hadith.matan_arab|truncate(400) }}
+                    </p>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
+                        <div class="flex items-center gap-2 text-sm text-slate-500">
+                            <i class="fa-solid fa-users"></i> {{ hadith.sanad|length }} Perawi
+                        </div>
+                        <a href="{{ url_for('hadith.detail', hadith_id=hadith.id) }}"
+                            class="text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 group">
+                            Lihat Detail Sanad <i
+                                class="fa-solid fa-arrow-right transform group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {# Pagination Controls #}
+            {% if total_pages > 1 %}
+            <div
+                class="mt-8 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="text-sm font-medium text-slate-500">
+                    Menampilkan <span class="text-slate-800 font-semibold">{{ (page - 1) * limit + 1 }}</span> - <span
+                        class="text-slate-800 font-semibold">{{ [page * limit, total_results]|min }}</span> dari <span
+                        class="text-slate-800 font-semibold">{{ total_results }}</span> hadis
+                </div>
+                <nav class="flex items-center gap-1.5" aria-label="Pagination">
+                    {# Previous Page Button #}
+                    {% if page > 1 %}
+                    <a href="{{ url_for('hadith.search', q=query, kitab=kitab, bab=bab, search_type=search_type, limit=limit, page=page-1) }}"
+                        class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all font-semibold">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </a>
+                    {% else %}
+                    <span
+                        class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-100 text-slate-300 cursor-not-allowed font-semibold">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </span>
+                    {% endif %}
+
+                    {# Page Numbers #}
+                    {% set window_size = 2 %}
+                    {% set start_page = [1, page - window_size]|max %}
+                    {% set end_page = [total_pages, page + window_size]|min %}
+
+                    {% if start_page > 1 %}
+                    <a href="{{ url_for('hadith.search', q=query, kitab=kitab, bab=bab, search_type=search_type, limit=limit, page=1) }}"
+                        class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all font-semibold">
+                        1
+                    </a>
+                    {% if start_page > 2 %}
+                    <span
+                        class="inline-flex items-center justify-center w-10 h-10 text-slate-400 font-medium">...</span>
+                    {% endif %}
+                    {% endif %}
+
+                    {% for p in range(start_page, end_page + 1) %}
+                    {% if p == page %}
+                    <span
+                        class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-md shadow-emerald-500/20">
+                        {{ p }}
+                    </span>
+                    {% else %}
+                    <a href="{{ url_for('hadith.search', q=query, kitab=kitab, bab=bab, search_type=search_type, limit=limit, page=p) }}"
+                        class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all font-semibold">
+                        {{ p }}
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if end_page < total_pages %} {% if end_page < total_pages - 1 %} <span
+                        class="inline-flex items-center justify-center w-10 h-10 text-slate-400 font-medium">...</span>
+                        {% endif %}
+                        <a href="{{ url_for('hadith.search', q=query, kitab=kitab, bab=bab, search_type=search_type, limit=limit, page=total_pages) }}"
+                            class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all font-semibold">
+                            {{ total_pages }}
+                        </a>
+                        {% endif %}
+
+                        {# Next Page Button #}
+                        {% if page < total_pages %} <a
+                            href="{{ url_for('hadith.search', q=query, kitab=kitab, bab=bab, search_type=search_type, limit=limit, page=page+1) }}"
+                            class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all font-semibold">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                            </a>
+                            {% else %}
+                            <span
+                                class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-100 text-slate-300 cursor-not-allowed font-semibold">
+                                <i class="fa-solid fa-chevron-right text-xs"></i>
+                            </span>
+                            {% endif %}
+                </nav>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
+                <div
+                    class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 text-slate-400 mb-6 text-3xl">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-900">Tidak ada hadis ditemukan</h3>
+                <p class="text-slate-500 mt-2 text-lg">Coba gunakan kata kunci lain seperti "surga", "ilmu", atau nama
+                    kitab.</p>
+            </div>
+            {% endif %}
+            {% else %}
+            <!-- Dashboard Welcome View (No Search Active) -->
+            <div
+                class="text-center py-24 bg-gradient-to-b from-white to-slate-50 rounded-3xl border border-slate-100 shadow-sm">
+                <div
+                    class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-emerald-50 text-emerald-500 mb-6 text-4xl shadow-inner">
+                    <i class="fa-solid fa-book-open-reader"></i>
+                </div>
+                <h3 class="text-3xl font-bold text-slate-900 mb-4">Mulai Pencarian Hadis</h3>
+                <p class="text-slate-500 text-lg max-w-lg mx-auto">
+                    {% if kitab and not bab %}
+                    Pilih salah satu bab di panel samping untuk melihat daftar hadis dalam kitab <span
+                        class="font-bold text-slate-700">"{{ kitab }}"</span>.
+                    {% else %}
+                    Silakan gunakan form pencarian di atas untuk mencari hadis berdasarkan terjemahan, atau pilih salah
+                    satu kitab di panel samping untuk memulai.
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div id="loading-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-opacity">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center text-center">
+        <lottie-player src="{{ url_for('static', filename='assets/loading.json') }}" background="transparent" speed="1" style="width: 150px; height: 150px;" loop autoplay></lottie-player>
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white mt-4">Sedang Mencari...</h3>
+        <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm">Mohon tunggu sebentar, ILHA sedang mencari hadis yang relevan untuk Anda.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Handle loading modal on form submit
+        const searchForm = document.getElementById('search-form');
+        const loadingModal = document.getElementById('loading-modal');
+        if (searchForm && loadingModal) {
+            searchForm.addEventListener('submit', () => {
+                loadingModal.classList.remove('hidden');
+            });
+        }
+
+        // Simpan teks asli saat halaman dimuat
+        const arabTexts = document.querySelectorAll('.js-arab-text');
+        arabTexts.forEach(el => {
+            el.dataset.original = el.textContent.trim();
+        });
+    });
+
+    function toggleHarakat(showHarakat) {
+        const btnHarakat = document.getElementById('btn-harakat');
+        const btnPlain = document.getElementById('btn-plain');
+
+        if (showHarakat) {
+            btnHarakat.classList.add('bg-white', 'text-emerald-600', 'shadow-sm', 'font-bold');
+            btnHarakat.classList.remove('text-slate-500', 'hover:text-slate-800', 'font-medium');
+
+            btnPlain.classList.remove('bg-white', 'text-emerald-600', 'shadow-sm', 'font-bold');
+            btnPlain.classList.add('text-slate-500', 'hover:text-slate-800', 'font-medium');
+        } else {
+            btnPlain.classList.add('bg-white', 'text-emerald-600', 'shadow-sm', 'font-bold');
+            btnPlain.classList.remove('text-slate-500', 'hover:text-slate-800', 'font-medium');
+
+            btnHarakat.classList.remove('bg-white', 'text-emerald-600', 'shadow-sm', 'font-bold');
+            btnHarakat.classList.add('text-slate-500', 'hover:text-slate-800', 'font-medium');
+        }
+
+        const arabTexts = document.querySelectorAll('.js-arab-text');
+        // Regex untuk menghapus harakat (diakritik Arab)
+        const harakatRegex = /[\u064B-\u065F\u0670]/g;
+
+        arabTexts.forEach(el => {
+            const original = el.dataset.original;
+            if (showHarakat) {
+                el.textContent = original;
+            } else {
+                el.textContent = original.replace(harakatRegex, '');
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Santri ILHA{% endblock %}
+
+{% block content %}
+<style>
+    /* Styling khusus RAG AI Chat agar markdown render dengan cantik */
+    .chat-prose h1,
+    .chat-prose h2,
+    .chat-prose h3 {
+        font-weight: 700;
+        color: #1e293b;
+        margin-top: 0.75rem;
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+
+    .chat-prose h1 {
+        font-size: 1.3rem;
+    }
+
+    .chat-prose h2 {
+        font-size: 1.2rem;
+    }
+
+    .chat-prose h3 {
+        font-size: 1.1rem;
+    }
+
+    .chat-prose p {
+        margin-bottom: 0.75rem;
+        line-height: 1.6;
+    }
+
+    .chat-prose ul {
+        list-style-type: disc;
+        padding-left: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .chat-prose ol {
+        list-style-type: decimal;
+        padding-left: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .chat-prose li {
+        margin-bottom: 0.35rem;
+        line-height: 1.5;
+    }
+
+    .chat-prose strong {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .chat-prose em {
+        font-style: italic;
+    }
+
+    /* Support Dark Mode */
+    .dark .chat-prose h1,
+    .dark .chat-prose h2,
+    .dark .chat-prose h3 {
+        color: #f8fafc;
+    }
+
+    .dark .chat-prose strong {
+        color: #f1f5f9;
+    }
+</style>
+<div
+    class="max-w-4xl mx-auto h-[80vh] flex flex-col glass-panel rounded-3xl overflow-hidden border border-slate-200 shadow-2xl">
+
+    <!-- Header -->
+    <div class="bg-white px-6 py-4 border-b border-slate-100 flex items-center gap-4">
+        <div
+            class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white shadow-md">
+            <i class="fa-solid fa-robot"></i>
+        </div>
+        <div>
+            <h2 class="font-bold text-lg text-slate-800">ILHA</h2>
+            <p class="text-xs text-slate-500">Tanya seputar hadis, sanad, atau maknanya.</p>
+        </div>
+    </div>
+
+    <!-- Chat Box -->
+    <div id="chat-box" class="flex-grow p-6 overflow-y-auto space-y-6 bg-slate-50/50 scroll-smooth">
+
+        <!-- Welcome Message -->
+        <div class="flex items-start gap-4">
+            <div
+                class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-sm flex-shrink-0">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 max-w-[80%]">
+                <p class="text-slate-700">Assalamu'alaikum! Salam Hadtasana.Saya <strong>ILHA</strong>, asisten anda
+                    dalam
+                    Belajar Hadis. Ada yang
+                    bisa saya bantu terkait hadis yang ingin Anda cari atau pahami?</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Input Area -->
+    <div class="p-4 bg-white border-t border-slate-100">
+        <form id="chat-form" class="relative flex items-center">
+            <input type="text" id="query-input" placeholder="Ketik pertanyaan Anda di sini..."
+                class="w-full pl-4 pr-14 py-4 rounded-full border-2 border-slate-100 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 bg-slate-50 text-slate-800 transition-all outline-none"
+                required>
+            <button type="submit" id="send-btn"
+                class="absolute right-2 w-10 h-10 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full flex items-center justify-center transition-colors shadow-md">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    const chatForm = document.getElementById('chat-form');
+    const queryInput = document.getElementById('query-input');
+    const chatBox = document.getElementById('chat-box');
+    const sendBtn = document.getElementById('send-btn');
+
+    function appendMessage(sender, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `flex items-start gap-4 ${sender === 'user' ? 'flex-row-reverse' : ''}`;
+
+        const avatar = sender === 'user'
+            ? `<div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white text-sm flex-shrink-0"><i class="fa-solid fa-user"></i></div>`
+            : `<div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-sm flex-shrink-0"><i class="fa-solid fa-robot"></i></div>`;
+
+        const bubbleStyle = sender === 'user'
+            ? 'bg-slate-800 text-white rounded-tr-none'
+            : 'bg-white text-slate-700 rounded-tl-none border border-slate-100';
+
+        // Parse markdown if sender is AI
+        let parsedText = text;
+        if (sender === 'ai' && typeof marked !== 'undefined') {
+            parsedText = marked.parse(text);
+        }
+
+        const contentClass = sender === 'ai' ? 'chat-prose' : 'whitespace-pre-wrap';
+
+        msgDiv.innerHTML = `
+            ${avatar}
+            <div class="p-4 rounded-2xl shadow-sm max-w-[80%] ${bubbleStyle}">
+                <div class="${contentClass}">${parsedText}</div>
+            </div>
+        `;
+
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendLoader() {
+        const msgDiv = document.createElement('div');
+        msgDiv.id = 'loader-msg';
+        msgDiv.className = `flex items-start gap-4`;
+        msgDiv.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-sm flex-shrink-0"><i class="fa-solid fa-robot"></i></div>
+            <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 flex items-center gap-2">
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+            </div>
+        `;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function removeLoader() {
+        const loader = document.getElementById('loader-msg');
+        if (loader) loader.remove();
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = queryInput.value.trim();
+        if (!text) return;
+
+        appendMessage('user', text);
+        queryInput.value = '';
+        sendBtn.disabled = true;
+
+        appendLoader();
+
+        try {
+            const response = await fetch("{{ url_for('ai_chat.ask') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: text })
+            });
+            const data = await response.json();
+
+            removeLoader();
+            if (data.answer) {
+                appendMessage('ai', data.answer);
+            } else {
+                appendMessage('ai', 'Maaf, terjadi kesalahan saat memproses permintaan.');
+            }
+        } catch (error) {
+            removeLoader();
+            appendMessage('ai', 'Error: Tidak dapat menghubungi server.');
+            console.error(error);
+        } finally {
+            sendBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}
